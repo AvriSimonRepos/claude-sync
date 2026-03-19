@@ -23,11 +23,11 @@ Covers **everything** — settings, skills, MCP configs, plugins, agents, custom
 ## Install
 
 ```bash
-# Option 1: curl
-curl -fsSL https://raw.githubusercontent.com/AvriSimonRepos/claude-sync/main/install.sh | bash
+# Option 1: curl (replace <YOUR-USER> with your GitHub username)
+curl -fsSL https://raw.githubusercontent.com/<YOUR-USER>/claude-sync/main/install.sh | bash
 
 # Option 2: clone
-git clone https://github.com/AvriSimonRepos/claude-sync.git
+git clone https://github.com/<YOUR-USER>/claude-sync.git
 cp claude-sync/claude-sync.sh ~/.local/bin/claude-sync
 chmod +x ~/.local/bin/claude-sync
 ```
@@ -43,7 +43,7 @@ claude-sync export
 
 # 3. Connect to GitHub (private repo recommended)
 cd ~/.claude-config
-git remote add origin git@github.com:AvriSimonRepos/claude-config.git
+git remote add origin git@github.com:<YOUR-USER>/claude-config.git
 git push -u origin main
 
 # 4. From now on, one command to sync:
@@ -71,6 +71,7 @@ claude-sync sync
 | `--only <components>` | Only sync: `settings,skills,plugins,scripts,mcp,agents,memory,projects` |
 | `--skip <components>` | Skip specific components |
 | `--dry-run` | Preview import without writing |
+| `--with-secrets` | Include API keys/tokens (default: stripped) |
 | `--from <path>` | Use alternate config repo for `install-skill` |
 
 ## What Gets Synced
@@ -84,19 +85,27 @@ claude-sync sync
 - `.mcp.json` (MCP server config)
 
 ### Per-Project
-- `.claude/skills/` (project-level skills like `sass-architect`, `prd`)
+- `.claude/skills/` (project-level skills)
 - Project memory (`~/.claude/projects/*/memory/`)
 - `.claude/CLAUDE.md` and root `CLAUDE.md`
 - Project-level settings and MCP configs
+
+## Security
+
+- **Secrets stripped by default** — API keys, tokens, passwords in settings and MCP configs are replaced with `__CONFIGURE_AFTER_IMPORT__` on export. Use `--with-secrets` to override.
+- **Credentials excluded** — `.credentials.json`, secret files, and keys are in `.gitignore`
+- **Plugin caches excluded** — only references are synced (plugins reinstall from marketplace)
+- **History/sessions excluded** — conversation data stays local
+- Use a **private repo** for your config data
 
 ## Setup on a New Machine
 
 ```bash
 # Install the tool
-curl -fsSL https://raw.githubusercontent.com/AvriSimonRepos/claude-sync/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/<YOUR-USER>/claude-sync/main/install.sh | bash
 
 # Clone your config
-claude-sync init git@github.com:AvriSimonRepos/claude-config.git
+claude-sync init git@github.com:<YOUR-USER>/claude-config.git
 
 # Restore everything
 claude-sync import
@@ -109,9 +118,9 @@ claude-sync import --only skills,settings
 
 ```bash
 # They clone your config repo (or fork it)
-claude-sync init git@github.com:AvriSimonRepos/claude-config.git
+claude-sync init git@github.com:<CONFIG-OWNER>/claude-config.git
 
-# Import only skills and settings (skip your personal memory/scripts)
+# Import only skills and settings (skip personal memory/scripts)
 claude-sync import --only skills,settings
 
 # Or install a single skill into their project
@@ -134,13 +143,6 @@ The config repo is just a git repo. Push it anywhere:
 - **GitLab / Bitbucket**: Same git workflow
 - **Google Drive**: Use [rclone](https://rclone.org/) to sync `~/.claude-config/` to Drive
 - **Dropbox / OneDrive**: Symlink `~/.claude-config` into your sync folder
-
-## Security
-
-- **Credentials are excluded** — `.credentials.json`, secrets, keys are in `.gitignore`
-- **Plugin caches excluded** — only references are synced (plugins reinstall from marketplace)
-- **History/sessions excluded** — conversation data stays local
-- Use a **private repo** for your config data
 
 ## License
 

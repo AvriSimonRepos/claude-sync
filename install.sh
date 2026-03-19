@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # claude-sync installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/AvriSimonRepos/claude-sync/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/<YOUR-USER>/claude-sync/main/install.sh | bash
+# Or set REPO env var: REPO=your-user/claude-sync bash install.sh
 
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
-REPO="AvriSimonRepos/claude-sync"
-BRANCH="main"
+REPO="${REPO:-AvriSimonRepos/claude-sync}"
+BRANCH="${BRANCH:-main}"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
