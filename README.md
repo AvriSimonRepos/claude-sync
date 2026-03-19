@@ -24,10 +24,10 @@ Covers **everything** — settings, skills, MCP configs, plugins, agents, custom
 
 ```bash
 # Option 1: curl
-curl -fsSL https://raw.githubusercontent.com/your-user/claude-sync/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AvriSimonRepos/claude-sync/main/install.sh | bash
 
 # Option 2: clone
-git clone https://github.com/your-user/claude-sync.git
+git clone https://github.com/AvriSimonRepos/claude-sync.git
 cp claude-sync/claude-sync.sh ~/.local/bin/claude-sync
 chmod +x ~/.local/bin/claude-sync
 ```
@@ -43,7 +43,7 @@ claude-sync export
 
 # 3. Connect to GitHub (private repo recommended)
 cd ~/.claude-config
-git remote add origin git@github.com:your-user/claude-config.git
+git remote add origin git@github.com:AvriSimonRepos/claude-config.git
 git push -u origin main
 
 # 4. From now on, one command to sync:
@@ -93,10 +93,10 @@ claude-sync sync
 
 ```bash
 # Install the tool
-curl -fsSL https://raw.githubusercontent.com/your-user/claude-sync/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AvriSimonRepos/claude-sync/main/install.sh | bash
 
 # Clone your config
-claude-sync init git@github.com:your-user/claude-config.git
+claude-sync init git@github.com:AvriSimonRepos/claude-config.git
 
 # Restore everything
 claude-sync import
@@ -109,7 +109,7 @@ claude-sync import --only skills,settings
 
 ```bash
 # They clone your config repo (or fork it)
-claude-sync init git@github.com:your-user/claude-config.git
+claude-sync init git@github.com:AvriSimonRepos/claude-config.git
 
 # Import only skills and settings (skip your personal memory/scripts)
 claude-sync import --only skills,settings
