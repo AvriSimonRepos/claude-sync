@@ -4,21 +4,23 @@ Export, import, and sync your entire Claude Code setup across machines.
 
 Covers **everything** — settings, skills, MCP configs, plugins, agents, custom scripts, project-level memory, and CLAUDE.md files.
 
-## Why not [claude-config-portable](https://github.com/nizanrosh/claude-config-portable)?
+Inspired by [claude-config-portable](https://github.com/nizanrosh/claude-config-portable) by [@nizanrosh](https://github.com/nizanrosh), which pioneered the idea of portable Claude Code configs. `claude-sync` builds on that foundation with additional coverage for project-level assets and git-based version history.
+
+## What's enhanced over claude-config-portable
 
 | Feature | claude-config-portable | claude-sync |
 |---|---|---|
-| Global settings | Yes | Yes |
-| User skills | Yes | Yes |
-| **Project-level skills** | No | **Yes** |
-| **Project memory** | No | **Yes** |
-| **Custom scripts** (statusline, etc.) | No | **Yes** |
-| **CLAUDE.md files** | No | **Yes** |
-| Version history | No | **Full git log** |
-| Diff between exports | No | `claude-sync diff` |
-| Selective import | `--only`/`--skip` | `--only`/`--skip` |
-| Share skills across projects | No | `install-skill` |
-| Dependencies | Go 1.22+ | bash + git |
+| Global settings & skills | Yes | Yes |
+| Selective import (`--only`/`--skip`) | Yes | Yes |
+| Secret stripping | Yes | Yes |
+| **Project-level skills** | - | Yes |
+| **Project memory** | - | Yes |
+| **Custom scripts** (statusline, etc.) | - | Yes |
+| **CLAUDE.md files** | - | Yes |
+| **Version history** | - | Full git log |
+| **Diff between exports** | - | `claude-sync diff` |
+| **Share skills across projects** | - | `install-skill` |
+| **Dependencies** | Go 1.22+ | bash + git |
 
 ## Install
 
