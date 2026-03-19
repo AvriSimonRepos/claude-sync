@@ -40,6 +40,7 @@ OPTIONS:
     --skip <components>     Comma-separated list of components to skip
     --from <path>           Use alternate config repo (for install-skill)
     --dry-run               Show what would happen without doing it
+    --with-secrets          Include API keys/tokens (default: stripped)
 
 ENVIRONMENT:
     CLAUDE_HOME             Claude config dir (default: ~/.claude)
@@ -68,6 +69,78 @@ should_include() {
     else
         return 0
     fi
+}
+
+PLACEHOLDER="__CONFIGURE_AFTER_IMPORT__"
+
+# Secret patterns to strip from env vars and MCP configs
+SECRET_PATTERNS='_KEY|_TOKEN|_SECRET|_PASSWORD|_CREDENTIAL|AUTHORIZATION|AUTH_HEADER|BEARER|API_KEY'
+
+# Strip secrets from a JSON file, writing sanitized version to dst
+strip_secrets_json() {
+    local src="$1" dst="$2"
+    if [[ "${WITH_SECRETS:-false}" == "true" ]]; then
+        cp -a "$src" "$dst"
+        return 0
+    fi
+    python3 -c "
+import json, re, sys, os
+
+PLACEHOLDER = '$PLACEHOLDER'
+SECRET_RE = re.compile(r'($SECRET_PATTERNS)', re.IGNORECASE)
+
+def scrub(obj, path=''):
+    if isinstance(obj, dict):
+        result = {}
+        for k, v in obj.items():
+            full_key = f'{path}.{k}' if path else k
+            if isinstance(v, str) and SECRET_RE.search(k):
+                result[k] = PLACEHOLDER
+            elif isinstance(v, dict):
+                result[k] = scrub(v, full_key)
+            elif isinstance(v, list):
+                result[k] = [scrub(i, full_key) if isinstance(i, (dict, list)) else i for i in v]
+            else:
+                result[k] = v
+        return result
+    return obj
+
+with open('$src') as f:
+    data = json.load(f)
+
+scrubbed = scrub(data)
+
+os.makedirs(os.path.dirname('$dst') or '.', exist_ok=True)
+with open('$dst', 'w') as f:
+    json.dump(scrubbed, f, indent=2)
+    f.write('\n')
+
+# Report what was stripped
+def find_stripped(orig, cleaned, path=''):
+    found = []
+    if isinstance(orig, dict) and isinstance(cleaned, dict):
+        for k in orig:
+            full = f'{path}.{k}' if path else k
+            if k in cleaned and cleaned[k] == PLACEHOLDER and orig[k] != PLACEHOLDER:
+                found.append(full)
+            elif isinstance(orig.get(k), dict):
+                found.extend(find_stripped(orig[k], cleaned.get(k, {}), full))
+    return found
+
+stripped = find_stripped(data, scrubbed)
+for s in stripped:
+    print(s)
+" 2>/dev/null
+}
+
+# Check a file for placeholder values and warn
+check_placeholders() {
+    local file="$1"
+    if [[ -f "$file" ]] && grep -q "$PLACEHOLDER" "$file" 2>/dev/null; then
+        warn "  $file contains placeholder secrets — edit manually after import"
+        return 0
+    fi
+    return 1
 }
 
 copy_if_exists() {
@@ -226,11 +299,19 @@ cmd_export() {
     header "Exporting Claude Code config"
     local count=0
 
-    # --- Global settings ---
+    # --- Global settings (secrets stripped by default) ---
     if should_include "settings"; then
         info "Settings..."
         for f in settings.json settings.local.json; do
-            if copy_if_exists "$CLAUDE_HOME/$f" "$CONFIG_REPO/global/$f"; then
+            if [[ -f "$CLAUDE_HOME/$f" ]]; then
+                local stripped
+                stripped=$(strip_secrets_json "$CLAUDE_HOME/$f" "$CONFIG_REPO/global/$f")
+                if [[ -n "$stripped" ]]; then
+                    warn "Stripped secrets from $f:"
+                    echo "$stripped" | while read -r key; do
+                        echo "    → $key"
+                    done
+                fi
                 count=$((count + 1))
             fi
         done
@@ -280,10 +361,18 @@ cmd_export() {
         done
     fi
 
-    # --- MCP config ---
+    # --- MCP config (secrets stripped by default) ---
     if should_include "mcp"; then
         info "MCP config..."
-        if copy_if_exists "$CLAUDE_HOME/.mcp.json" "$CONFIG_REPO/global/mcp.json"; then
+        if [[ -f "$CLAUDE_HOME/.mcp.json" ]]; then
+            local stripped
+            stripped=$(strip_secrets_json "$CLAUDE_HOME/.mcp.json" "$CONFIG_REPO/global/mcp.json")
+            if [[ -n "$stripped" ]]; then
+                warn "Stripped secrets from .mcp.json:"
+                echo "$stripped" | while read -r key; do
+                    echo "    → $key"
+                done
+            fi
             count=$((count + 1))
         fi
     fi
@@ -337,8 +426,9 @@ cmd_export() {
                 fi
             done
 
-            # Project-level MCP
-            if should_include "mcp" && copy_if_exists "$project_path/.mcp.json" "$dest/mcp.json"; then
+            # Project-level MCP (secrets stripped)
+            if should_include "mcp" && [[ -f "$project_path/.mcp.json" ]]; then
+                strip_secrets_json "$project_path/.mcp.json" "$dest/mcp.json" > /dev/null
                 count=$((count + 1))
             fi
 
@@ -364,6 +454,8 @@ cmd_import() {
     local count=0
     local dry_run="${DRY_RUN:-false}"
 
+    local has_placeholders=false
+
     # --- Global settings ---
     if should_include "settings"; then
         for f in settings.json settings.local.json; do
@@ -372,6 +464,9 @@ cmd_import() {
                     info "[dry-run] Would restore $f"
                 else
                     cp -a "$CONFIG_REPO/global/$f" "$CLAUDE_HOME/$f"
+                    if check_placeholders "$CLAUDE_HOME/$f"; then
+                        has_placeholders=true
+                    fi
                     count=$((count + 1))
                 fi
             fi
@@ -437,6 +532,9 @@ cmd_import() {
             info "[dry-run] Would restore MCP config"
         else
             cp -a "$CONFIG_REPO/global/mcp.json" "$CLAUDE_HOME/.mcp.json"
+            if check_placeholders "$CLAUDE_HOME/.mcp.json"; then
+                has_placeholders=true
+            fi
             count=$((count + 1))
         fi
     fi
@@ -515,6 +613,11 @@ cmd_import() {
         info "Dry run complete — no changes made."
     else
         ok "Imported $count files from $CONFIG_REPO"
+        if [[ "$has_placeholders" == "true" ]]; then
+            echo ""
+            warn "Some files contain ${BOLD}$PLACEHOLDER${NC}"
+            warn "Edit these files manually to add your API keys/tokens."
+        fi
     fi
 }
 
@@ -715,16 +818,18 @@ cmd_version() {
 ONLY=""
 SKIP=""
 DRY_RUN="false"
+WITH_SECRETS="false"
 FROM_REPO=""
 COMMAND=""
 ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --only)    ONLY="$2"; shift 2 ;;
-        --skip)    SKIP="$2"; shift 2 ;;
-        --dry-run) DRY_RUN="true"; shift ;;
-        --from)    FROM_REPO="$2"; shift 2 ;;
+        --only)         ONLY="$2"; shift 2 ;;
+        --skip)         SKIP="$2"; shift 2 ;;
+        --dry-run)      DRY_RUN="true"; shift ;;
+        --with-secrets) WITH_SECRETS="true"; shift ;;
+        --from)         FROM_REPO="$2"; shift 2 ;;
         --help|-h) usage; exit 0 ;;
         -*)        err "Unknown option: $1"; usage; exit 1 ;;
         *)
